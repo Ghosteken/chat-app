@@ -4,65 +4,91 @@
     <meta charset="utf-8" />
     <title>Chat Backend Test</title>
     <style>
-      body { font-family: sans-serif; max-width: 900px; margin: 20px auto; }
+      :root { --bg:#0f172a; --panel:#111827; --muted:#6b7280; --text:#e5e7eb; --brand:#4f46e5; --brand-2:#7c3aed; --ok:#10b981; --err:#ef4444; }
+      * { box-sizing: border-box; }
+      body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); }
+      h1 { margin: 0 0 12px 0; font-size: 22px; }
+      .container { display: grid; grid-template-columns: 320px 1fr; gap: 12px; height: 100vh; padding: 12px; }
+      .panel { background: var(--panel); border-radius: 10px; padding: 12px; }
+      .sidebar { overflow: auto; }
+      .main { display:flex; flex-direction:column; }
       .row { margin: 8px 0; }
-      pre { background: #f5f5f5; padding: 10px; height: 160px; overflow: auto; }
-      input, button { padding: 6px; }
-      #messages { height: 220px; }
+      input, button, select { padding: 8px 10px; border-radius: 8px; border: 1px solid #1f2937; background:#0b1220; color: var(--text); width: 100%; }
+      button { background: linear-gradient(135deg, var(--brand), var(--brand-2)); border: 0; cursor: pointer; }
+      button:disabled { opacity: .5; cursor: not-allowed; }
+      label { font-size: 12px; color: var(--muted); margin-right: 10px; }
+      .sidebar h3 { margin: 0 0 8px 0; font-size: 14px; color:#cbd5e1; }
+      .member { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:8px; }
+      .member:hover { background:#0b1220; }
+      .avatar { width:28px; height:28px; border-radius:50%; background:#1f2937; display:flex; align-items:center; justify-content:center; font-size:12px; color:#cbd5e1; }
+      .name { flex:1; font-size:14px; }
+      .status { width:8px; height:8px; border-radius:50%; }
+      .status.online { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+      .status.offline { background: #374151; }
+      .chatHeader { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+      .messages { flex: 1; overflow:auto; background:#0b1220; border-radius:8px; padding:12px; }
+      .inputRow { display:flex; gap:8px; }
+      .bubble { max-width: 70%; margin:6px 0; padding:8px 10px; border-radius:12px; background:#172033; }
+      .me { background: #1f2a44; align-self:flex-end; }
+      .meta { font-size:11px; color:#a1a1aa; margin-bottom:2px; }
+      .fieldErr { color: var(--err); font-size: 12px; margin-top: 4px; }
+      #toasts { position: fixed; top: 16px; right: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 9999; }
+      .toast { padding: 10px 12px; border-radius: 10px; background:#111827; border:1px solid #1f2937; box-shadow: 0 6px 20px rgba(0,0,0,.3); }
+      .toast.ok { border-color: #064e3b; background:#052e2a; }
+      .toast.err { border-color: #7f1d1d; background:#2a0b0b; }
     </style>
   </head>
   <body>
-    <h1>Chat Demo</h1>
+    <div id="toasts"></div>
+    <div class="container">
+      <!-- Sidebar -->
+      <div class="panel sidebar">
+        <h1>Chat Demo</h1>
+        <div class="panel">
+          <div class="row"><label>Email</label><input id="email" placeholder="alice@example.com" /></div>
+          <div class="row"><label>Password</label><input id="password" type="password" placeholder="password" /></div>
+          <div class="row"><label>Name (for register)</label><input id="name" placeholder="Alice" /></div>
+          <div class="row" style="display:flex; gap:8px">
+            <button id="login" style="flex:1">Login</button>
+            <button id="register" style="flex:1">Register</button>
+          </div>
+          <div id="authStatus" class="row" style="min-height: 18px; color: var(--muted);"></div>
+        </div>
 
-    <section class="row" id="auth">
-      <strong>1) Sign in</strong>
-      <div>
-        <label>Email <input id="email" placeholder="alice@example.com" /></label>
-        <label>Password <input id="password" type="password" value="secret123" /></label>
-        <label style="margin-left:10px">Name (for register) <input id="name" placeholder="Alice" /></label>
-      </div>
-      <div>
-        <button id="login">Login</button>
-        <button id="register">Register</button>
-        <span id="authStatus" style="margin-left:8px;color:#555"></span>
-      </div>
-    </section>
+        <div id="roomsPanel" class="panel" style="display:none">
+          <h3>Your Rooms</h3>
+          <div class="row"><label>My rooms</label><select id="myRooms" style="width:100%"></select></div>
+          <div class="row"><button id="selectRoom" style="width:100%">Open</button></div>
+          <div class="row"><label>New room</label><input id="roomName" placeholder="General" /></div>
+          <div class="row" style="display:flex; align-items:center; gap:8px"><label>Private</label><input id="isPrivate" type="checkbox" /></div>
+          <div class="row"><button id="createRoom" style="width:100%">Create</button></div>
+          <div id="inviteInfo" class="row" style="color: var(--muted);"></div>
+          <div class="row"><label>Join by ID</label><input id="roomId" placeholder="e.g. 1" /></div>
+          <div class="row"><label>Invite (if private)</label><input id="inviteCode" placeholder="code" /></div>
+          <div class="row"><button id="joinRoom" style="width:100%">Join</button></div>
+        </div>
 
-    <section class="row" id="rooms" style="display:none">
-      <strong>2) Rooms</strong>
-      <div style="margin-top:6px">
-        <label>My rooms <select id="myRooms"></select></label>
-        <button id="selectRoom">Open</button>
-        <span id="currentRoomLabel" style="margin-left:8px"></span>
+        <div id="membersPanel" class="panel" style="display:none">
+          <h3>Members</h3>
+          <div id="membersList"></div>
+        </div>
       </div>
-      <div style="margin-top:6px">
-        <label>Name <input id="roomName" placeholder="General" /></label>
-        <label>Private <input id="isPrivate" type="checkbox" /></label>
-        <button id="createRoom">Create</button>
-        <span id="inviteInfo" style="margin-left:8px;color:#555"></span>
-      </div>
-      <div style="margin-top:6px">
-        <label>Join by ID <input id="roomId" size="6" /></label>
-        <label>Invite <input id="inviteCode" size="12" placeholder="if private"/></label>
-        <button id="joinRoom">Join</button>
-        <button id="loadMembers">Members</button>
-      </div>
-    </section>
 
-    <section class="row" id="chat" style="display:none">
-      <strong>3) Chat</strong>
-      <div id="typing" style="height:18px;color:#888;margin:6px 0"></div>
-      <pre id="messages"></pre>
-      <div style="margin-top:6px">
-        <input id="message" placeholder="Type a message" size="60" />
-        <button id="send">Send</button>
+      <!-- Main -->
+      <div class="panel main">
+        <div class="chatHeader">
+          <div id="currentRoomLabel">Select a room</div>
+          <div id="typing" style="color: var(--muted);"></div>
+        </div>
+        <div id="messages" class="messages flexcol"></div>
+        <div class="inputRow">
+          <input id="message" placeholder="Type a message and press Enter" />
+          <button id="send">Send</button>
+        </div>
+        <div class="row" style="color: var(--muted); font-size:12px;">Events</div>
+        <pre id="events"></pre>
       </div>
-    </section>
-
-    <section class="row" id="eventsWrap" style="display:none">
-      <strong>Events</strong>
-      <pre id="events"></pre>
-    </section>
+    </div>
 
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
@@ -71,27 +97,53 @@
       const eventsEl = qs('events');
       const messagesEl = qs('messages');
       const typingEl = qs('typing');
+      const toastsEl = qs('toasts');
+
+      const toast = (msg, type='ok') => {
+        const d = document.createElement('div');
+        d.className = `toast ${type}`;
+        d.textContent = msg;
+        toastsEl.appendChild(d);
+        setTimeout(()=>{ d.remove(); }, 3000);
+      };
 
       let token = '';
       let socket = null;
       let currentRoomId = null;
       let typingTimer = null;
 
-      const api = (path, method='GET', body) => fetch('/api' + path, {
-        method, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) },
-        body: body ? JSON.stringify(body) : undefined
-      }).then(r => r.json());
+      const api = async (path, method='GET', body) => {
+        const res = await fetch('/api' + path, {
+          method,
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) },
+          body: body ? JSON.stringify(body) : undefined
+        });
+        let data; try { data = await res.json(); } catch { data = {}; }
+        return { ok: res.ok, data };
+      };
 
-      async function onAuth(r){
-        if(r.token){ token = r.token; qs('authStatus').textContent = 'Authenticated'; qs('rooms').style.display='block'; qs('eventsWrap').style.display='block'; await loadRooms(); connectSocket(); }
-        else { qs('authStatus').textContent = (r.error || 'Auth failed'); }
+      async function onAuthResult(resp){
+        if(resp.ok && resp.data.token){
+          token = resp.data.token;
+          qs('authStatus').textContent = 'Authenticated';
+          toast('Logged in', 'ok');
+          qs('roomsPanel').style.display='block';
+          await loadRooms();
+          connectSocket();
+        } else {
+          const msg = resp.data?.error || 'Authentication failed';
+          qs('authStatus').textContent = msg;
+          toast(msg, 'err');
+        }
       }
 
-      qs('login').onclick = async()=> onAuth(await api('/auth/login','POST',{ email: qs('email').value, password: qs('password').value }));
-      qs('register').onclick = async()=> onAuth(await api('/auth/register','POST',{ name: qs('name').value, email: qs('email').value, password: qs('password').value }));
+      qs('login').onclick = async()=> onAuthResult(await api('/auth/login','POST',{ email: qs('email').value, password: qs('password').value }));
+      qs('register').onclick = async()=> onAuthResult(await api('/auth/register','POST',{ name: qs('name').value, email: qs('email').value, password: qs('password').value }));
 
       async function loadRooms(){
-        const rooms = await api('/rooms');
+        const resp = await api('/rooms');
+        if(!resp.ok) { toast(resp.data?.error || 'Failed to load rooms', 'err'); return; }
+        const rooms = resp.data;
         const sel = qs('myRooms'); sel.innerHTML='';
         rooms.forEach(r=>{ const o=document.createElement('option'); o.value=r.id; o.textContent=`#${r.id} ${r.name}`; sel.appendChild(o); });
       }
@@ -99,43 +151,70 @@
       function connectSocket(){
         if(socket) socket.disconnect();
         socket = io('/', { auth: { token } });
-        socket.on('receive_message', (p)=> { append(messagesEl, `[${p.roomId}] ${p.senderId}: ${p.content}`); });
-        socket.on('user_status', (p)=> append(eventsEl, `user_status: ${JSON.stringify(p)}`));
+        socket.on('receive_message', (p)=> renderIncoming(p));
+        socket.on('user_status', (p)=> { append(eventsEl, `user_status: ${JSON.stringify(p)}`); refreshMembers(); });
         socket.on('typing', (p)=> { typingEl.textContent = p.isTyping ? `User ${p.userId} is typing...` : ''; });
+        toast('Socket connected', 'ok');
       }
 
+      function renderIncoming(p){
+        const wrap = document.createElement('div');
+        wrap.className = 'bubble';
+        wrap.innerHTML = `<div class="meta">User ${p.senderId} • ${new Date(p.createdAt).toLocaleTimeString()}</div>${escapeHtml(p.content)}`;
+        messagesEl.appendChild(wrap);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+
+      function escapeHtml(str){ return str.replace(/[&<>"']/g, (c)=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+
       async function selectRoomById(id){
-        currentRoomId = parseInt(id,10); qs('currentRoomLabel').textContent = `Current: #${currentRoomId}`;
+        currentRoomId = parseInt(id,10); qs('currentRoomLabel').textContent = `Room #${currentRoomId}`;
         if(socket) socket.emit('join_room', { roomId: currentRoomId });
-        qs('chat').style.display='block';
         messagesEl.textContent='';
         const hist = await api(`/rooms/${currentRoomId}/messages?limit=50`);
-        (hist.messages || []).slice().reverse().forEach(m=> append(messagesEl, `[${m.roomId}] ${m.senderId}: ${m.content}`));
+        (hist.data?.messages || []).slice().reverse().forEach(m=> renderIncoming({ ...m, createdAt: m.createdAt }));
+        await refreshMembers();
+      }
+
+      async function refreshMembers(){
+        if(!currentRoomId) return;
+        const resp = await api(`/rooms/${currentRoomId}/members`);
+        const box = qs('membersPanel'); const list = qs('membersList');
+        if(!resp.ok){ box.style.display='none'; return; }
+        box.style.display='block'; list.innerHTML='';
+        resp.data.forEach(m=>{
+          const row = document.createElement('div');
+          row.className = 'member';
+          const initials = (m.name||'U').split(' ').map(s=>s[0]).join('').slice(0,2).toUpperCase();
+          row.innerHTML = `<div class="avatar">${initials}</div><div class="name">${escapeHtml(m.name || ('User '+m.userId))}</div><div class="status ${m.online? 'online':'offline'}"></div>`;
+          list.appendChild(row);
+        });
       }
 
       qs('selectRoom').onclick = ()=> selectRoomById(qs('myRooms').value);
       qs('createRoom').onclick = async()=>{
-        const r = await api('/rooms','POST',{ name: qs('roomName').value, isPrivate: qs('isPrivate').checked });
-        append(eventsEl, 'created room: ' + JSON.stringify(r));
-        if(r.id){ await loadRooms(); qs('myRooms').value = r.id; await selectRoomById(r.id); }
+        const resp = await api('/rooms','POST',{ name: qs('roomName').value, isPrivate: qs('isPrivate').checked });
+        if(!resp.ok){ toast(resp.data?.error || 'Failed to create room', 'err'); return; }
+        toast('Room created', 'ok');
+        const r = resp.data; await loadRooms(); qs('myRooms').value = r.id; await selectRoomById(r.id);
         qs('inviteInfo').textContent = r.inviteCode ? `Invite: ${r.inviteCode}` : '';
       };
       qs('joinRoom').onclick = async()=>{
-        const r = await api(`/rooms/${qs('roomId').value}/join`, 'POST', { inviteCode: qs('inviteCode').value || undefined });
-        append(eventsEl, 'join room: ' + JSON.stringify(r));
+        const resp = await api(`/rooms/${qs('roomId').value}/join`, 'POST', { inviteCode: qs('inviteCode').value || undefined });
+        if(!resp.ok){ toast(resp.data?.error || 'Failed to join', 'err'); return; }
+        toast('Joined room', 'ok');
         await loadRooms();
       };
-      qs('loadMembers').onclick = async()=>{
-        const m = await api(`/rooms/${qs('roomId').value || qs('myRooms').value}/members`);
-        append(eventsEl, 'members: ' + JSON.stringify(m));
-      };
 
-      qs('send').onclick = ()=>{
-        const content = qs('message').value.trim();
+      function send(){
+        const input = qs('message');
+        const content = input.value.trim();
         if(!content || !currentRoomId || !socket) return;
         socket.emit('send_message', { roomId: currentRoomId, content });
-        qs('message').value='';
-      };
+        input.value='';
+      }
+      qs('send').onclick = send;
+      qs('message').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); send(); } });
 
       qs('message').addEventListener('input', ()=>{
         if(!socket || !currentRoomId) return;
