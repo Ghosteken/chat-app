@@ -4,6 +4,7 @@ import { prisma } from '../prisma';
 import { SlidingWindowLimiter } from '../services/rateLimiter';
 import { config } from '../config/env';
 import jwt from 'jsonwebtoken';
+import * as presence from '../services/presence';
 
 interface ServerToClientEvents {
   receive_message: (msg: { id: number; roomId: number; senderId: number; content: string; createdAt: string }) => void;
@@ -27,8 +28,7 @@ export function createSocketServer(httpServer: HttpServer) {
 
   const limiter = new SlidingWindowLimiter(config.MESSAGE_RATE_LIMIT, config.MESSAGE_RATE_WINDOW_MS);
 
-  // Track presence: userId -> count of connected sockets
-  const onlineCounts = new Map<number, number>();
+  // Presence via shared service
 
   io.use((socket, next) => {
     // Expect token in query or header
@@ -45,10 +45,9 @@ export function createSocketServer(httpServer: HttpServer) {
 
   io.on('connection', async (socket) => {
     const userId = socket.data.userId;
-    // presence online
-    const prev = onlineCounts.get(userId) || 0;
-    onlineCounts.set(userId, prev + 1);
-    if (prev === 0) {
+    // presence online via service
+    const becameOnline = presence.connect(userId);
+    if (becameOnline) {
       io.emit('user_status', { userId, status: 'online' });
     }
 
@@ -76,13 +75,10 @@ export function createSocketServer(httpServer: HttpServer) {
     });
 
     socket.on('disconnect', async () => {
-      const count = (onlineCounts.get(userId) || 1) - 1;
-      if (count <= 0) {
-        onlineCounts.delete(userId);
+      const wentOffline = presence.disconnect(userId);
+      if (wentOffline) {
         await prisma.user.update({ where: { id: userId }, data: { lastSeen: new Date() } });
         io.emit('user_status', { userId, status: 'offline' });
-      } else {
-        onlineCounts.set(userId, count);
       }
     });
   });

@@ -1,0 +1,140 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Chat Backend Test</title>
+    <style>
+      body { font-family: sans-serif; max-width: 900px; margin: 20px auto; }
+      .row { margin: 8px 0; }
+      pre { background: #f5f5f5; padding: 10px; height: 160px; overflow: auto; }
+      input, button { padding: 6px; }
+      #messages { height: 220px; }
+    </style>
+  </head>
+  <body>
+    <h1>Chat Backend Test</h1>
+
+    <div class="row">
+      <label>Name <input id="name" placeholder="Alice" /></label>
+      <label>Email <input id="email" placeholder="alice@example.com" /></label>
+      <label>Password <input id="password" type="password" value="secret123" /></label>
+      <button id="register">Register</button>
+      <button id="login">Login</button>
+    </div>
+    <div class="row">
+      <label>Token <input id="token" size="80" /></label>
+    </div>
+    <div class="row">
+      <label>Room name <input id="roomName" placeholder="General" /></label>
+      <label>Private <input id="isPrivate" type="checkbox" /></label>
+      <button id="createRoom">Create room</button>
+    </div>
+    <div class="row">
+      <label>Room ID <input id="roomId" size="6" /></label>
+      <label>Invite <input id="inviteCode" size="12" /></label>
+      <button id="joinRoom">Join room</button>
+      <button id="loadMembers">Load members</button>
+    </div>
+
+    <div class="row">
+      <button id="connectSocket">Connect Socket</button>
+      <button id="joinSocketRoom">Join Socket Room</button>
+      <button id="toggleTyping">Toggle Typing</button>
+    </div>
+
+    <div class="row">
+      <label>Message <input id="message" size="60" /></label>
+      <button id="send">Send</button>
+    </div>
+
+    <h3>Events</h3>
+    <pre id="events"></pre>
+
+    <h3>Messages</h3>
+    <pre id="messages"></pre>
+
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+      const api = (path, method='GET', body) => fetch('/api' + path, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(tokenEl.value ? { Authorization: 'Bearer ' + tokenEl.value } : {})
+        },
+        body: body ? JSON.stringify(body) : undefined
+      }).then(r => r.json());
+
+      const ev = (m) => { const el = document.getElementById('events'); el.textContent += m + "\n"; el.scrollTop = el.scrollHeight; };
+      const mv = (m) => { const el = document.getElementById('messages'); el.textContent += m + "\n"; el.scrollTop = el.scrollHeight; };
+
+      const nameEl = document.getElementById('name');
+      const emailEl = document.getElementById('email');
+      const passwordEl = document.getElementById('password');
+      const tokenEl = document.getElementById('token');
+      const roomNameEl = document.getElementById('roomName');
+      const isPrivateEl = document.getElementById('isPrivate');
+      const roomIdEl = document.getElementById('roomId');
+      const inviteCodeEl = document.getElementById('inviteCode');
+      const messageEl = document.getElementById('message');
+
+      document.getElementById('register').onclick = async () => {
+        const r = await api('/auth/register', 'POST', {
+          name: nameEl.value, email: emailEl.value, password: passwordEl.value
+        });
+        if (r.token) tokenEl.value = r.token;
+        ev('register: ' + JSON.stringify(r));
+      };
+
+      document.getElementById('login').onclick = async () => {
+        const r = await api('/auth/login', 'POST', {
+          email: emailEl.value, password: passwordEl.value
+        });
+        if (r.token) tokenEl.value = r.token;
+        ev('login: ' + JSON.stringify(r));
+      };
+
+      document.getElementById('createRoom').onclick = async () => {
+        const r = await api('/rooms', 'POST', { name: roomNameEl.value, isPrivate: isPrivateEl.checked });
+        ev('createRoom: ' + JSON.stringify(r));
+      };
+
+      document.getElementById('joinRoom').onclick = async () => {
+        const r = await api(`/rooms/${roomIdEl.value}/join`, 'POST', { inviteCode: inviteCodeEl.value || undefined });
+        ev('joinRoom: ' + JSON.stringify(r));
+      };
+
+      document.getElementById('loadMembers').onclick = async () => {
+        const r = await api(`/rooms/${roomIdEl.value}/members`);
+        ev('members: ' + JSON.stringify(r));
+      };
+
+      let socket;
+      document.getElementById('connectSocket').onclick = () => {
+        socket = io('/', { auth: { token: tokenEl.value } });
+        socket.on('receive_message', (p) => mv(JSON.stringify(p)));
+        socket.on('user_status', (p) => ev('user_status: ' + JSON.stringify(p)));
+        socket.on('typing', (p) => ev('typing: ' + JSON.stringify(p)));
+        ev('socket connected (check devtools if errors)');
+      };
+
+      document.getElementById('joinSocketRoom').onclick = () => {
+        socket?.emit('join_room', { roomId: parseInt(roomIdEl.value, 10) });
+        ev('join_room emitted');
+      };
+
+      let typing = false;
+      document.getElementById('toggleTyping').onclick = () => {
+        typing = !typing;
+        socket?.emit('typing', { roomId: parseInt(roomIdEl.value, 10), isTyping: typing });
+        ev('typing=' + typing);
+      };
+
+      document.getElementById('send').onclick = () => {
+        const content = messageEl.value;
+        socket?.emit('send_message', { roomId: parseInt(roomIdEl.value, 10), content });
+        messageEl.value = '';
+      };
+    </script>
+  </body>
+</html>
+
