@@ -109,7 +109,7 @@
         setTimeout(()=>{ d.remove(); }, 3000);
       };
 
-      let token = '';
+      let token = localStorage.getItem('token') || '';
       let socket = null;
       let currentRoomId = null;
       let typingTimer = null;
@@ -128,6 +128,7 @@
       async function onAuthResult(resp){
         if(resp.ok && resp.data.token){
           token = resp.data.token;
+          localStorage.setItem('token', token);
           qs('authStatus').textContent = 'Authenticated';
           toast('Logged in', 'ok');
           qs('roomsPanel').style.display='block';
@@ -138,6 +139,13 @@
           qs('authStatus').textContent = msg;
           toast(msg, 'err');
         }
+      }
+
+      // Auto-initialize after refresh if token exists
+      if (token) {
+        qs('authStatus').textContent = 'Authenticated';
+        qs('roomsPanel').style.display='block';
+        loadRooms().then(()=> connectSocket());
       }
 
       qs('login').onclick = async()=> onAuthResult(await api('/auth/login','POST',{ email: qs('email').value, password: qs('password').value }));
