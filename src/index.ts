@@ -20,6 +20,12 @@ app.use('/api/auth', authRoutes);
 app.use('/api/rooms', roomsRoutes);
 app.use('/api', membersRoutes);
 
+// Generic error handler
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
 const server = http.createServer(app);
 createSocketServer(server);
 

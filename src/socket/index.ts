@@ -48,7 +48,9 @@ export function createSocketServer(httpServer: HttpServer) {
     // presence online via service
     const becameOnline = presence.connect(userId);
     if (becameOnline) {
-      io.emit('user_status', { userId, status: 'online' });
+      const payload = { userId, status: 'online' as const };
+      console.log('user_status:', JSON.stringify(payload));
+      io.emit('user_status', payload);
     }
 
     socket.on('join_room', async ({ roomId }) => {
@@ -63,22 +65,29 @@ export function createSocketServer(httpServer: HttpServer) {
       const member = await prisma.roomMember.findUnique({ where: { roomId_userId: { roomId, userId } } });
       if (!member) return;
       if (!limiter.allow(userId, roomId)) return; // rate limited silently
-      const msg = await prisma.message.create({ data: { roomId, senderId: userId, content: content.trim() } });
-      const payload = { id: msg.id, roomId: msg.roomId, senderId: msg.senderId, content: msg.content, createdAt: msg.createdAt.toISOString() };
-      io.to(`room:${roomId}`).emit('receive_message', payload);
+      try {
+        const msg = await prisma.message.create({ data: { roomId, senderId: userId, content: content.trim() } });
+        const payload = { id: msg.id, roomId: msg.roomId, senderId: msg.senderId, content: msg.content, createdAt: msg.createdAt.toISOString() };
+        io.to(`room:${roomId}`).emit('receive_message', payload);
+      } catch (e) {
+        console.error('send_message error', e);
+      }
     });
 
     socket.on('typing', async ({ roomId, isTyping }) => {
       const member = await prisma.roomMember.findUnique({ where: { roomId_userId: { roomId, userId } } });
       if (!member) return;
       socket.to(`room:${roomId}`).emit('typing', { roomId, userId, isTyping: !!isTyping });
+      // server log for typing start/stop can be noisy; keep minimal
     });
 
     socket.on('disconnect', async () => {
       const wentOffline = presence.disconnect(userId);
       if (wentOffline) {
         await prisma.user.update({ where: { id: userId }, data: { lastSeen: new Date() } });
-        io.emit('user_status', { userId, status: 'offline' });
+        const payload = { userId, status: 'offline' as const };
+        console.log('user_status:', JSON.stringify(payload));
+        io.emit('user_status', payload);
       }
     });
   });
