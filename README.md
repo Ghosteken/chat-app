@@ -47,6 +47,8 @@ npx prisma generate
 npx prisma migrate dev --name init
 ```
 
+If using hosted MySQL variants (PlanetScale, TiDB) and you encounter FK/migration constraints, set `relationMode = "prisma"` in `prisma/schema.prisma` (already applied) and re-run `npx prisma generate`.
+
 ### 3) Run the server
 - Development (with auto-reload)
 
