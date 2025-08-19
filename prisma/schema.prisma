@@ -1,0 +1,61 @@
+// Prisma schema for chat app
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  email        String    @unique
+  passwordHash String
+  name         String
+  lastSeen     DateTime? @db.Timestamp(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  rooms        RoomMember[]
+  messages     Message[]  @relation("UserMessages")
+  createdRooms Room[]     @relation("UserCreatedRooms")
+}
+
+model Room {
+  id          Int          @id @default(autoincrement())
+  name        String
+  isPrivate   Boolean      @default(false)
+  inviteCode  String?      @unique
+  createdAt   DateTime     @default(now())
+  createdById Int
+
+  createdBy   User         @relation("UserCreatedRooms", fields: [createdById], references: [id])
+  members     RoomMember[]
+  messages    Message[]
+}
+
+model RoomMember {
+  id       Int      @id @default(autoincrement())
+  roomId   Int
+  userId   Int
+  joinedAt DateTime @default(now())
+
+  room     Room     @relation(fields: [roomId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@unique([roomId, userId])
+}
+
+model Message {
+  id        Int      @id @default(autoincrement())
+  roomId    Int
+  senderId  Int
+  content   String
+  createdAt DateTime @default(now())
+
+  room      Room     @relation(fields: [roomId], references: [id])
+  sender    User     @relation("UserMessages", fields: [senderId], references: [id])
+}
+

@@ -1,0 +1,54 @@
+# === OS Files ===
+.DS_Store
+Thumbs.db
+
+# === Logs ===
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# === Dependency directories ===
+node_modules/
+jspm_packages/
+
+# === Build output ===
+dist/
+build/
+out/
+coverage/
+*.tsbuildinfo
+
+# === Runtime data ===
+*.pid
+*.seed
+*.pid.lock
+
+# === IDE / Editor files ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*.bak
+
+# === Environment files ===
+.env
+.env.local
+.env.*.local
+
+# === Python (if any) ===
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pytest_cache/
+.mypy_cache/
+
+# === Misc ===
+*.tgz
+*.zip
+*.tar.gz
+*.rar
