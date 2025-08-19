@@ -18,9 +18,10 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  rooms        RoomMember[]
-  messages     Message[]  @relation("UserMessages")
-  createdRooms Room[]     @relation("UserCreatedRooms")
+  rooms           RoomMember[]
+  messages        Message[]         @relation("UserMessages")
+  createdRooms    Room[]            @relation("UserCreatedRooms")
+  messageReceipts MessageReceipt[]
 }
 
 model Room {
@@ -57,5 +58,19 @@ model Message {
 
   room      Room     @relation(fields: [roomId], references: [id])
   sender    User     @relation("UserMessages", fields: [senderId], references: [id])
+  receipts  MessageReceipt[]
+}
+
+model MessageReceipt {
+  id         Int       @id @default(autoincrement())
+  messageId  Int
+  userId     Int
+  deliveredAt DateTime?
+  readAt      DateTime?
+
+  message    Message  @relation(fields: [messageId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@unique([messageId, userId])
 }
 

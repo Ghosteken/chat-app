@@ -10,12 +10,15 @@ interface ServerToClientEvents {
   receive_message: (msg: { id: number; roomId: number; senderId: number; content: string; createdAt: string }) => void;
   user_status: (p: { userId: number; status: 'online' | 'offline'; lastSeen?: string }) => void;
   typing: (p: { roomId: number; userId: number; isTyping: boolean }) => void;
+  message_status: (p: { messageId: number; userId: number; deliveredAt?: string; readAt?: string }) => void;
 }
 
 interface ClientToServerEvents {
   join_room: (p: { roomId: number }) => void;
   send_message: (p: { roomId: number; content: string }) => void;
   typing: (p: { roomId: number; isTyping: boolean }) => void;
+  message_delivered: (p: { messageId: number }) => void;
+  message_read: (p: { messageId: number }) => void;
 }
 
 interface InterServerEvents {}
@@ -25,6 +28,11 @@ export function createSocketServer(httpServer: HttpServer) {
   const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(httpServer, {
     cors: { origin: config.CORS_ORIGIN, credentials: true },
   });
+  // Setup message receipts listeners
+  try {
+    const { setupReceipts } = require('./receipts');
+    setupReceipts(io as any);
+  } catch {}
 
   const limiter = new SlidingWindowLimiter(config.MESSAGE_RATE_LIMIT, config.MESSAGE_RATE_WINDOW_MS);
 
@@ -58,6 +66,7 @@ export function createSocketServer(httpServer: HttpServer) {
       const member = await prisma.roomMember.findUnique({ where: { roomId_userId: { roomId, userId } } });
       if (!member) return; // ignore
       socket.join(`room:${roomId}`);
+      console.log('join_room:', JSON.stringify({ userId, roomId }));
     });
 
     socket.on('send_message', async ({ roomId, content }) => {
@@ -69,6 +78,13 @@ export function createSocketServer(httpServer: HttpServer) {
         const msg = await prisma.message.create({ data: { roomId, senderId: userId, content: content.trim() } });
         const payload = { id: msg.id, roomId: msg.roomId, senderId: msg.senderId, content: msg.content, createdAt: msg.createdAt.toISOString() };
         io.to(`room:${roomId}`).emit('receive_message', payload);
+        // auto-mark delivered for sender (they "have" the message)
+        const rec = await prisma.messageReceipt.upsert({
+          where: { messageId_userId: { messageId: msg.id, userId } },
+          create: { messageId: msg.id, userId, deliveredAt: new Date() },
+          update: { deliveredAt: new Date() },
+        });
+        io.to(`room:${roomId}`).emit('message_status', { messageId: msg.id, userId, deliveredAt: rec.deliveredAt?.toISOString() });
       } catch (e) {
         console.error('send_message error', e);
       }

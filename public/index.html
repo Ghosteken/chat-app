@@ -31,6 +31,7 @@
       .bubble { max-width: 70%; margin:6px 0; padding:8px 10px; border-radius:12px; background:#172033; }
       .me { background: #1f2a44; align-self:flex-end; }
       .meta { font-size:11px; color:#a1a1aa; margin-bottom:2px; }
+      .statusline { font-size: 11px; color: #94a3b8; margin-top: 3px; }
       .fieldErr { color: var(--err); font-size: 12px; margin-top: 4px; }
       #toasts { position: fixed; top: 16px; right: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 9999; }
       .toast { padding: 10px 12px; border-radius: 10px; background:#111827; border:1px solid #1f2937; box-shadow: 0 6px 20px rgba(0,0,0,.3); }
@@ -154,15 +155,26 @@
         socket.on('receive_message', (p)=> renderIncoming(p));
         socket.on('user_status', (p)=> { append(eventsEl, `user_status: ${JSON.stringify(p)}`); refreshMembers(); });
         socket.on('typing', (p)=> { typingEl.textContent = p.isTyping ? `User ${p.userId} is typing...` : ''; });
+        socket.on('message_status', (p)=> updateMessageStatus(p));
         toast('Socket connected', 'ok');
       }
 
+      const msgIndex = new Map(); // messageId -> element
       function renderIncoming(p){
         const wrap = document.createElement('div');
         wrap.className = 'bubble';
-        wrap.innerHTML = `<div class="meta">User ${p.senderId} • ${new Date(p.createdAt).toLocaleTimeString()}</div>${escapeHtml(p.content)}`;
+        wrap.innerHTML = `<div class="meta">User ${p.senderId} • ${new Date(p.createdAt).toLocaleTimeString()}</div><div>${escapeHtml(p.content)}</div><div class=\"statusline\" id=\"ms-${p.id}\"></div>`;
         messagesEl.appendChild(wrap);
+        msgIndex.set(p.id, wrap.querySelector(`#ms-${p.id}`));
         messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+      function updateMessageStatus(p){
+        const el = msgIndex.get(p.messageId);
+        if(!el) return;
+        const parts = [];
+        if(p.deliveredAt) parts.push('delivered');
+        if(p.readAt) parts.push('read');
+        el.textContent = parts.join(' • ');
       }
 
       function escapeHtml(str){ return str.replace(/[&<>"']/g, (c)=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
