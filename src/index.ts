@@ -13,12 +13,18 @@ app.use(cors({ origin: config.CORS_ORIGIN, credentials: true }));
 app.use(express.json());
 
 // Serve simple test frontend
-app.use(express.static(path.join(__dirname, '../public')));
+const publicDir = path.join(__dirname, '../public');
+app.use(express.static(publicDir));
+// Explicit root route (helps some Docker hosts)
+app.get('/', (_req, res) => res.sendFile(path.join(publicDir, 'index.html')));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/rooms', roomsRoutes);
 app.use('/api', membersRoutes);
+
+// Fallback: SPA-like routing to index.html for any non-API path (for non-API routes)
+app.get(/^(?!\/api\/).*/, (_req, res) => res.sendFile(path.join(publicDir, 'index.html')));
 
 // Generic error handler
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
