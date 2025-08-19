@@ -34,9 +34,10 @@ describe('message delivery', () => {
   }
 
   test('user A sends message, user B receives it', async () => {
+    const rnd = Math.random().toString(36).slice(2);
     // Create two users and one room with both as members
-    const a = await prisma.user.create({ data: { name: 'A', email: 'a@example.com', passwordHash: 'x' } });
-    const b = await prisma.user.create({ data: { name: 'B', email: 'b@example.com', passwordHash: 'y' } });
+    const a = await prisma.user.create({ data: { name: 'A', email: `a_${rnd}@example.com`, passwordHash: 'x' } });
+    const b = await prisma.user.create({ data: { name: 'B', email: `b_${rnd}@example.com`, passwordHash: 'y' } });
     const room = await prisma.room.create({ data: { name: 'R', createdById: a.id, members: { create: [{ userId: a.id }, { userId: b.id }] } } });
 
     const sockA = connect(makeToken(a.id));
