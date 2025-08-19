@@ -81,6 +81,7 @@
           <div id="currentRoomLabel">Select a room</div>
           <div id="typing" style="color: var(--muted);"></div>
         </div>
+        <div class="row"><button id="loadOlder" style="width:100%">Load older</button></div>
         <div id="messages" class="messages flexcol"></div>
         <div class="inputRow">
           <input id="message" placeholder="Type a message and press Enter" />
@@ -112,6 +113,7 @@
       let socket = null;
       let currentRoomId = null;
       let typingTimer = null;
+      let nextCursor = null;
 
       const api = async (path, method='GET', body) => {
         const res = await fetch('/api' + path, {
@@ -177,14 +179,31 @@
         el.textContent = parts.join(' • ');
       }
 
+      function toggleLoadOlder(){ qs('loadOlder').style.display = nextCursor ? 'block' : 'none'; }
+
+      async function loadOlder(){
+        if(!nextCursor) return;
+        const res = await api(`/rooms/${currentRoomId}/messages?limit=50&cursor=${nextCursor}`);
+        const msgs = res.data?.messages || [];
+        const prevScrollHeight = messagesEl.scrollHeight;
+        msgs.reverse().forEach(m=> renderIncoming({ ...m, createdAt: m.createdAt }));
+        nextCursor = res.data?.nextCursor || null;
+        toggleLoadOlder();
+        // keep viewport at same spot after prepending older messages
+        messagesEl.scrollTop = messagesEl.scrollHeight - prevScrollHeight;
+      }
+
       function escapeHtml(str){ return str.replace(/[&<>"']/g, (c)=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
 
       async function selectRoomById(id){
         currentRoomId = parseInt(id,10); qs('currentRoomLabel').textContent = `Room #${currentRoomId}`;
         if(socket) socket.emit('join_room', { roomId: currentRoomId });
         messagesEl.textContent='';
+        nextCursor = null;
         const hist = await api(`/rooms/${currentRoomId}/messages?limit=50`);
         (hist.data?.messages || []).slice().reverse().forEach(m=> renderIncoming({ ...m, createdAt: m.createdAt }));
+        nextCursor = hist.data?.nextCursor || null;
+        toggleLoadOlder();
         await refreshMembers();
       }
 
@@ -204,6 +223,7 @@
       }
 
       qs('selectRoom').onclick = ()=> selectRoomById(qs('myRooms').value);
+      qs('loadOlder').onclick = loadOlder;
       qs('createRoom').onclick = async()=>{
         const resp = await api('/rooms','POST',{ name: qs('roomName').value, isPrivate: qs('isPrivate').checked });
         if(!resp.ok){ toast(resp.data?.error || 'Failed to create room', 'err'); return; }
