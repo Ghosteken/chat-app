@@ -5,8 +5,6 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const { prisma } = require('../dist/prisma');
 
-// Simple integration test for message delivery between two users
-// Assumes DB is migrated and .env is configured
 
 describe('message delivery', () => {
   let app, httpServer;

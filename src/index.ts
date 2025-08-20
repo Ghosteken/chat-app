@@ -12,7 +12,6 @@ const app = express();
 app.use(cors({ origin: config.CORS_ORIGIN, credentials: true }));
 app.use(express.json());
 
-// Serve simple test frontend
 const publicDir = path.join(__dirname, '../public');
 app.use(express.static(publicDir));
 // Explicit root route (helps some Docker hosts)
