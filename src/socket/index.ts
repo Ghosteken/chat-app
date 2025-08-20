@@ -28,7 +28,7 @@ export function createSocketServer(httpServer: HttpServer) {
   const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(httpServer, {
     cors: { origin: config.CORS_ORIGIN, credentials: true },
   });
-  // Setup message receipts listeners
+
   try {
     const { setupReceipts } = require('./receipts');
     setupReceipts(io as any);
@@ -36,10 +36,8 @@ export function createSocketServer(httpServer: HttpServer) {
 
   const limiter = new SlidingWindowLimiter(config.MESSAGE_RATE_LIMIT, config.MESSAGE_RATE_WINDOW_MS);
 
-  // Presence via shared service
 
   io.use((socket, next) => {
-    // Expect token in query or header
     const token = (socket.handshake.auth?.token as string) || (socket.handshake.headers['authorization']?.toString().replace('Bearer ', ''));
     if (!token) return next(new Error('unauthorized'));
     try {
@@ -53,7 +51,6 @@ export function createSocketServer(httpServer: HttpServer) {
 
   io.on('connection', async (socket) => {
     const userId = socket.data.userId;
-    // presence online via service
     const becameOnline = presence.connect(userId);
     if (becameOnline) {
       const payload = { userId, status: 'online' as const };
@@ -94,7 +91,6 @@ export function createSocketServer(httpServer: HttpServer) {
       const member = await prisma.roomMember.findUnique({ where: { roomId_userId: { roomId, userId } } });
       if (!member) return;
       socket.to(`room:${roomId}`).emit('typing', { roomId, userId, isTyping: !!isTyping });
-      // server log for typing start/stop can be noisy; keep minimal
     });
 
     socket.on('disconnect', async () => {

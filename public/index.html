@@ -141,7 +141,6 @@
         }
       }
 
-      // Auto-initialize after refresh if token exists
       if (token) {
         qs('authStatus').textContent = 'Authenticated';
         qs('roomsPanel').style.display='block';
@@ -197,7 +196,7 @@
         msgs.reverse().forEach(m=> renderIncoming({ ...m, createdAt: m.createdAt }));
         nextCursor = res.data?.nextCursor || null;
         toggleLoadOlder();
-        // keep viewport at same spot after prepending older messages
+        
         messagesEl.scrollTop = messagesEl.scrollHeight - prevScrollHeight;
       }
 

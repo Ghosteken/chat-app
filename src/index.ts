@@ -14,7 +14,7 @@ app.use(express.json());
 
 const publicDir = path.join(__dirname, '../public');
 app.use(express.static(publicDir));
-// Explicit root route (helps some Docker hosts)
+// Explicit root route (Docker hosts)
 app.get('/', (_req, res) => res.sendFile(path.join(publicDir, 'index.html')));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
