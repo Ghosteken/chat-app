@@ -39,13 +39,7 @@ coverage/
 .env.local
 .env.*.local
 
-# === Python (if any) ===
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-*.pytest_cache/
-.mypy_cache/
+
 
 # === Misc ===
 *.tgz
